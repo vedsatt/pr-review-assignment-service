@@ -103,7 +103,11 @@ func (s *Service) AddTeam(ctx context.Context, team models.AddTeamRequest) (*mod
 	}
 
 	if teamExists != nil && len(teamExists.Members) > 0 {
-		return nil, mapRepositoryError(err)
+		zap.L().Info("business logic error",
+			zap.Error(errors.New("AddTeam: team already exists")),
+			zap.String("type", "business"))
+
+		return nil, &models.ErrDetails{Code: models.TeamExistsErr, Message: "team already exists"}
 	}
 
 	tx, err := s.repository.BeginTx(ctx)
@@ -156,7 +160,7 @@ func (s *Service) AddTeam(ctx context.Context, team models.AddTeamRequest) (*mod
 
 func (s *Service) GetTeam(ctx context.Context, teamName string) (*models.Team, *models.ErrDetails) {
 	if teamName == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("empty team_name")),
 			zap.String("type", "business"))
 
@@ -169,7 +173,7 @@ func (s *Service) GetTeam(ctx context.Context, teamName string) (*models.Team, *
 	}
 
 	if team == nil {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("team not found")),
 			zap.String("type", "business"))
 		return nil, &models.ErrDetails{Code: models.NotFoundErr, Message: "team not found"}
@@ -180,7 +184,7 @@ func (s *Service) GetTeam(ctx context.Context, teamName string) (*models.Team, *
 
 func (s *Service) SetUserStatus(ctx context.Context, userSettings models.SetUserStatusRequest) (models.User, *models.ErrDetails) {
 	if userSettings.ID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("SetUserStatus: empty user_id")),
 			zap.String("type", "business"))
 
@@ -256,7 +260,7 @@ func (s *Service) deactivateUser(ctx context.Context, tx pgx.Tx, userSettings mo
 
 func (s *Service) GetUserReviews(ctx context.Context, userID string) ([]*models.PullRequestShort, *models.ErrDetails) {
 	if userID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("GetUserReviews: user not found")),
 			zap.String("type", "business"))
 
@@ -276,7 +280,7 @@ func (s *Service) CreatePullRequest(
 	pullRequest models.CreatePRRequest,
 ) (*models.PullRequest, *models.ErrDetails) {
 	if pullRequest.AuthorID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("CreatePullRequest: empty author_id")),
 			zap.String("type", "business"))
 
@@ -284,7 +288,7 @@ func (s *Service) CreatePullRequest(
 	}
 
 	if pullRequest.ID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("CreatePullRequest: empty pull_request_id")),
 			zap.String("type", "business"))
 
@@ -297,7 +301,7 @@ func (s *Service) CreatePullRequest(
 	}
 
 	if exists != nil {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("CreatePullRequest: pull request already exists")),
 			zap.String("type", "business"))
 
@@ -359,7 +363,7 @@ func (s *Service) CreatePullRequest(
 
 func (s *Service) MergePullRequest(ctx context.Context, pullRequestID string) (models.PullRequest, *models.ErrDetails) {
 	if pullRequestID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("CreatePullRequest: pull request already exists")),
 			zap.String("type", "business"))
 
@@ -383,7 +387,7 @@ func (s *Service) ReassignPullRequestReviewer(
 	prSettings models.ReassignPRReviewerRequest,
 ) (models.PullRequest, string, *models.ErrDetails) {
 	if prSettings.OldReviewerID == "" || prSettings.PullRequestID == "" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("ReassignPullRequestReviewer: reviewer_id or pull_request_id is empty")),
 			zap.String("type", "business"))
 
@@ -396,7 +400,7 @@ func (s *Service) ReassignPullRequestReviewer(
 	}
 
 	if assignedPR == nil {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("ReassignPullRequestReviewer: user not assigned on pull request")),
 			zap.String("type", "business"))
 
@@ -405,7 +409,7 @@ func (s *Service) ReassignPullRequestReviewer(
 	}
 
 	if assignedPR.Status == "MERGED" {
-		zap.L().Error("business logic error",
+		zap.L().Info("business logic error",
 			zap.Error(errors.New("ReassignPullRequestReviewer: can't reassign reviewer on merged pull request")),
 			zap.String("type", "business"))
 
