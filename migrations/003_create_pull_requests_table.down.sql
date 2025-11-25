@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS pull_requests;
+
+DROP SEQUENCE IF EXISTS pr_id_seq;
