@@ -1,5 +1,3 @@
-BIN_NAME=reviewers_assigment_service
-
 .PHONY: 
 
 all: build
