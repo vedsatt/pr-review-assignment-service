@@ -4,7 +4,7 @@ BIN_NAME=reviewers_assigment_service
 
 all: build
 
-DCE= docker-compose --env-file config/.env
+DCE= docker-compose
 
 build:
 	$(DCE) up -d --build

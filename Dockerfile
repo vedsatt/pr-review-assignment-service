@@ -25,7 +25,7 @@ WORKDIR /app
 
 COPY --from=builder /app/bin/server /app/server
 COPY --from=builder /app/bin/migrate /app/migrate
-COPY --from=builder /app/config /app/config
+COPY --from=builder /app/.env /app/.env
 COPY --from=builder /app/migrations /app/migrations
 
 RUN chown -R appuser:appuser /app
