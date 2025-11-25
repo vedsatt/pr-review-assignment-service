@@ -20,7 +20,7 @@ make build
 ```
 или
 ```bash
-docker-compose --env-file config/.env up -d --build
+docker-compose up -d
 ```
 
 # Вопросы и решения 
