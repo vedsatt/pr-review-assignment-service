@@ -11,7 +11,7 @@
 # Установка и запуск
 **Установка:**
 ```bash
-git clone github.com/vedsatt/pr-review-assignment-service
+git clone https://github.com/vedsatt/pr-review-assignment-service
 cd pr-review-assignment-service
 ```
 **Запуск:**
