@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/vedsatt/pr-review-assignment-service/internal/models"
@@ -22,7 +23,7 @@ type Repository interface {
 	SelectUserReviews(ctx context.Context, userID string) ([]*models.PullRequestShort, error)
 	DeletePullRequestReviewer(ctx context.Context, tx pgx.Tx, prID, reviewerID string) error
 	InsertPullRequest(ctx context.Context, tx pgx.Tx, pullRequest models.CreatePRRequest) error
-	SelectPullRequest(ctx context.Context, pullRequestID string) (*models.PullRequest, error)
+	SelectPullRequest(ctx context.Context, pullRequestID string) (*models.PullRequest, time.Time, error)
 	UpdatePullRequestStatus(ctx context.Context, pullRequestID string) error
 	AssignPullRequestReviewers(ctx context.Context, tx pgx.Tx, pullRequestID string, reviewers []string) error
 	ReassignPullRequestReviewer(
@@ -295,7 +296,7 @@ func (s *Service) CreatePullRequest(
 		return nil, &models.ErrDetails{Code: models.NotFoundErr, Message: "empty pull_request_id"}
 	}
 
-	exists, err := s.repository.SelectPullRequest(ctx, pullRequest.ID)
+	exists, _, err := s.repository.SelectPullRequest(ctx, pullRequest.ID)
 	if err != nil {
 		return nil, mapRepositoryError(err)
 	}
@@ -353,7 +354,7 @@ func (s *Service) CreatePullRequest(
 		return nil, mapRepositoryError(err)
 	}
 
-	pr, err := s.repository.SelectPullRequest(ctx, pullRequest.ID)
+	pr, _, err := s.repository.SelectPullRequest(ctx, pullRequest.ID)
 	if err != nil {
 		return nil, mapRepositoryError(err)
 	}
@@ -374,11 +375,12 @@ func (s *Service) MergePullRequest(ctx context.Context, pullRequestID string) (m
 		return models.PullRequest{}, mapRepositoryError(err)
 	}
 
-	pr, err := s.repository.SelectPullRequest(ctx, pullRequestID)
+	pr, mergedAt, err := s.repository.SelectPullRequest(ctx, pullRequestID)
 	if err != nil {
 		return models.PullRequest{}, mapRepositoryError(err)
 	}
 
+	pr.MergedAt = mergedAt
 	return *pr, nil
 }
 
@@ -394,7 +396,7 @@ func (s *Service) ReassignPullRequestReviewer(
 		return models.PullRequest{}, "", &models.ErrDetails{Code: models.NotFoundErr, Message: "resource not found"}
 	}
 
-	assignedPR, err := s.repository.SelectPullRequest(ctx, prSettings.PullRequestID)
+	assignedPR, _, err := s.repository.SelectPullRequest(ctx, prSettings.PullRequestID)
 	if err != nil {
 		return models.PullRequest{}, "", mapRepositoryError(err)
 	}
@@ -454,7 +456,7 @@ func (s *Service) ReassignPullRequestReviewer(
 		return models.PullRequest{}, "", mapRepositoryError(err)
 	}
 
-	pr, err := s.repository.SelectPullRequest(ctx, prSettings.PullRequestID)
+	pr, _, err := s.repository.SelectPullRequest(ctx, prSettings.PullRequestID)
 	if err != nil {
 		return models.PullRequest{}, "", mapRepositoryError(err)
 	}

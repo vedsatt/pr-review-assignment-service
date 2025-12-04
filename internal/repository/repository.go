@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -327,25 +328,26 @@ func (r *Repository) InsertPullRequest(ctx context.Context, tx pgx.Tx, pullReque
 	return nil
 }
 
-func (r *Repository) SelectPullRequest(ctx context.Context, pullRequestID string) (*models.PullRequest, error) {
+func (r *Repository) SelectPullRequest(ctx context.Context, pullRequestID string) (*models.PullRequest, time.Time, error) {
 	prQuery, prArgs, err := r.builder.
-		Select("id", "pr_name", "author_id", "pr_status").
+		Select("id", "pr_name", "author_id", "pr_status", "merged_at").
 		From("pull_requests").
 		Where(squirrel.Eq{"id": pullRequestID}).
 		ToSql()
 
 	if err != nil {
-		return nil, wrapDBError(err, "SelectPullRequest: build query")
+		return nil, time.Time{}, wrapDBError(err, "SelectPullRequest: build query")
 	}
 
 	var pr models.PullRequest
-	err = r.pool.QueryRow(ctx, prQuery, prArgs...).Scan(&pr.ID, &pr.Name, &pr.AuthorID, &pr.Status)
+	var mergedAt time.Time
+	err = r.pool.QueryRow(ctx, prQuery, prArgs...).Scan(&pr.ID, &pr.Name, &pr.AuthorID, &pr.Status, &mergedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return nil, time.Time{}, nil
 	}
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, wrapDBError(err, "SelectPullRequest: query row")
+		return nil, time.Time{}, wrapDBError(err, "SelectPullRequest: query row")
 	}
 
 	reviewersQuery, reviewersArgs, err := r.builder.
@@ -355,12 +357,12 @@ func (r *Repository) SelectPullRequest(ctx context.Context, pullRequestID string
 		ToSql()
 
 	if err != nil {
-		return nil, wrapDBError(err, "SelectPullRequest: build reviewers query")
+		return nil, time.Time{}, wrapDBError(err, "SelectPullRequest: build reviewers query")
 	}
 
 	rows, err := r.pool.Query(ctx, reviewersQuery, reviewersArgs...)
 	if err != nil {
-		return nil, wrapDBError(err, "SelectPullRequest: execute reviewers query")
+		return nil, time.Time{}, wrapDBError(err, "SelectPullRequest: execute reviewers query")
 	}
 	defer rows.Close()
 
@@ -370,14 +372,14 @@ func (r *Repository) SelectPullRequest(ctx context.Context, pullRequestID string
 
 		err = rows.Scan(&reviewerID)
 		if err != nil {
-			return nil, wrapDBError(err, "SelectPullRequest: scan reviewer")
+			return nil, time.Time{}, wrapDBError(err, "SelectPullRequest: scan reviewer")
 		}
 
 		reviewers = append(reviewers, reviewerID)
 	}
 	pr.AssignedReviewers = reviewers
 
-	return &pr, nil
+	return &pr, mergedAt, nil
 }
 
 func (r *Repository) UpdatePullRequestStatus(ctx context.Context, pullRequestID string) error {
@@ -387,6 +389,7 @@ func (r *Repository) UpdatePullRequestStatus(ctx context.Context, pullRequestID 
 		Set("merged_at", "NOW()").
 		Where(squirrel.Eq{"id": pullRequestID}).
 		Where(squirrel.Eq{"pr_status": "OPEN"}).
+		Where(squirrel.NotEq{"pr_status": "MERGED"}).
 		ToSql()
 
 	if err != nil {
